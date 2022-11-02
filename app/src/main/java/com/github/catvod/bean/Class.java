@@ -1,5 +1,6 @@
 package com.github.catvod.bean;
 
+import com.github.catvod.utils.Trans;
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
@@ -13,19 +14,28 @@ public class Class {
     private String typeId;
     @SerializedName("type_name")
     private String typeName;
+    @SerializedName("type_flag")
+    private String typeFlag;
 
     public static List<Class> arrayFrom(String str) {
         Type listType = new TypeToken<List<Class>>() {}.getType();
-        return new Gson().fromJson(str, listType);
+        List<Class> items = new Gson().fromJson(str, listType);
+        for (Class item : items) item.typeName = Trans.get(item.typeName);
+        return items;
     }
 
-    public Class(int typeId, String typeName) {
-        this(String.valueOf(typeId), typeName);
+    public Class(String typeId) {
+        this(typeId, typeId);
     }
 
     public Class(String typeId, String typeName) {
+        this(typeId, typeName, "");
+    }
+
+    public Class(String typeId, String typeName, String typeFlag) {
         this.typeId = typeId;
-        this.typeName = typeName;
+        this.typeName = Trans.get(typeName);
+        this.typeFlag = typeFlag;
     }
 
     public String getTypeId() {

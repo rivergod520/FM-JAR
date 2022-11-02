@@ -9,6 +9,7 @@ import com.github.catvod.bean.Vod;
 import com.github.catvod.crawler.Spider;
 import com.github.catvod.net.OkHttpUtil;
 import com.github.catvod.utils.Misc;
+import com.github.catvod.utils.Trans;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -18,28 +19,21 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * @author ColaMint & FongMi
  */
 public class Bili extends Spider {
 
-    private final String url = "https://www.bilibili.com";
+    private static final String url = "https://www.bilibili.com";
     private HashMap<String, String> header;
     private JSONObject ext;
 
     private void initHeader() {
         header = new HashMap<>();
+        header.put("cookie", "_uuid=5D5B10137-1328-6FA7-F1078-7299610109934F45334infoc; bg_view_12044=386583; buvid3=185689C8-03A5-751C-1AAF-03F69282AA9E47110infoc; b_nut=1667308447; buvid4=1AB69C99-50B4-D973-BF32-2CB8367580C147110-122110121-JleLtcqrjFz2MFF2u1deMQ%3D%3D; buvid_fp_plain=undefined; fingerprint3=dd53d137790289498f103b2fbf3fb252; fingerprint=7cc2faedec7082808a3099d0e3188c38; DedeUserID=429617357; DedeUserID__ckMd5=58f591cbe4b64558; SESSDATA=b70d8210%2C1682860530%2C600cd*b1; bili_jct=30fa4e1fd12981b4ae980d7ad5252894; i-wanna-go-back=-1; b_ut=5; buvid_fp=18ca78cc62eef7ce8dba4a806e9fdfa6; bg_view_41410=691613%7C478176; bg_view_43141=690880; sid=5tu2zjlx; b_lsid=10515334D_184366495CB; theme_style=light; nostalgia_conf=-1; innersign=1; rpdid=|(J|k~|)lk~k0J'uYY~JY|)|Y; CURRENT_FNVAL=16; CURRENT_QUALITY=120");
         header.put("User-Agent", Misc.CHROME);
-        HashMap<String, List<String>> respHeaderMap = new HashMap<>();
-        OkHttpUtil.string(url, header, respHeaderMap);
-        for (String text : Objects.requireNonNull(respHeaderMap.get("set-cookie"))) {
-            if (!text.contains("buvid3")) continue;
-            header.put("cookie", text.split(";")[0]);
-            header.put("Referer", url);
-            break;
-        }
+        header.put("Referer", url);
     }
 
     @Override
@@ -66,9 +60,9 @@ public class Bili extends Spider {
     @Override
     public String categoryContent(String tid, String pg, boolean filter, HashMap<String, String> extend) throws Exception {
         String duration = extend.containsKey("duration") ? extend.get("duration") : "0";
+        if (extend.containsKey("tid")) tid = tid + " " + extend.get("tid");
         String url = "https://api.bilibili.com/x/web-interface/search/type?search_type=video&keyword=" + URLEncoder.encode(tid) + "&duration=" + duration + "&page=" + pg;
         JSONObject resp = new JSONObject(OkHttpUtil.string(url, header));
-        System.out.println(resp.toString());
         JSONArray result = resp.getJSONObject("data").getJSONArray("result");
         List<Vod> list = new ArrayList<>();
         for (int i = 0; i < result.length(); ++i) {
@@ -98,7 +92,7 @@ public class Bili extends Spider {
         for (int i = 0; i < pages.length(); ++i) {
             JSONObject page = pages.getJSONObject(i);
             String title = page.getString("part").replace("$", "_").replace("#", "_");
-            playlist.add(title + "$" + aid + "+ " + page.getLong("cid"));
+            playlist.add(Trans.get(title) + "$" + aid + "+" + page.getLong("cid"));
         }
         Vod vod = new Vod();
         vod.setVodId(bvid);
@@ -122,7 +116,7 @@ public class Bili extends Spider {
         String[] ids = id.split("\\+");
         String aid = ids[0];
         String cid = ids[1];
-        String url = "https://api.bilibili.com/x/player/playurl?avid=" + aid + "&cid= " + cid + "&qn=112";
+        String url = "https://api.bilibili.com/x/player/playurl?avid=" + aid + "&cid=" + cid + "&qn=120&fourk=1";
         JSONObject resp = new JSONObject(OkHttpUtil.string(url, header));
         url = resp.getJSONObject("data").getJSONArray("durl").getJSONObject(0).getString("url");
         return Result.get().url(url).header(header).string();

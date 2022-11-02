@@ -9,12 +9,14 @@ import com.github.catvod.bean.Vod;
 import com.github.catvod.crawler.Spider;
 import com.github.catvod.net.OkHttpUtil;
 import com.github.catvod.utils.Misc;
+import com.github.catvod.utils.Trans;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -34,7 +36,7 @@ public class Dm84 extends Spider {
         return headers;
     }
 
-    private Filter addFilter(String name, String key, List<String> texts) {
+    private Filter getFilter(String name, String key, List<String> texts) {
         List<Filter.Value> values = new ArrayList<>();
         for (String text : texts) {
             if (text.isEmpty()) continue;
@@ -46,7 +48,7 @@ public class Dm84 extends Spider {
     }
 
     private String replaceBy(String text) {
-        return text.replace("按时间", "time").replace("按人气", "hist").replace("按评分", "score");
+        return text.replace("按时间", "time").replace("按人气", "hits").replace("按评分", "score");
     }
 
     @Override
@@ -66,9 +68,9 @@ public class Dm84 extends Spider {
             doc = Jsoup.parse(OkHttpUtil.string(siteUrl + "/list-" + item.getTypeId() + ".html", getHeaders()));
             Elements elements = doc.select("ul.list_filter > li > div");
             List<Filter> array = new ArrayList<>();
-            array.add(addFilter("類型", "type", elements.get(0).select("a").eachText()));
-            array.add(addFilter("時間", "year", elements.get(1).select("a").eachText()));
-            array.add(addFilter("排序", "by", elements.get(2).select("a").eachText()));
+            array.add(getFilter("類型", "type", elements.get(0).select("a").eachText()));
+            array.add(getFilter("時間", "year", elements.get(1).select("a").eachText()));
+            array.add(getFilter("排序", "by", elements.get(2).select("a").eachText()));
             filters.put(item.getTypeId(), array);
         }
         for (Element element : doc.select("div.item")) {
@@ -89,7 +91,7 @@ public class Dm84 extends Spider {
         if (extend.get("year") == null) extend.put("year", "");
         if (extend.get("by") == null) extend.put("by", "time");
         String by = extend.get("by");
-        String type = Misc.encode(extend.get("type"));
+        String type = URLEncoder.encode(extend.get("type"));
         String year = extend.get("year");
         String target = siteUrl + String.format("/show-%s--%s-%s--%s-%s.html", tid, by, type, year, pg);
         Document doc = Jsoup.parse(OkHttpUtil.string(target, getHeaders()));
@@ -139,7 +141,7 @@ public class Dm84 extends Spider {
             List<String> vodItems = new ArrayList<>();
             for (int j = 0; j < playList.size(); j++) {
                 Element e = playList.get(j);
-                vodItems.add(e.text() + "$" + e.attr("href"));
+                vodItems.add(Trans.get(e.text()) + "$" + e.attr("href"));
             }
             if (vodItems.size() > 0) {
                 sites.put(sourceName, TextUtils.join("#", vodItems));

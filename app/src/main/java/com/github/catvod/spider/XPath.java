@@ -10,6 +10,7 @@ import com.github.catvod.crawler.Spider;
 import com.github.catvod.crawler.SpiderDebug;
 import com.github.catvod.net.OkHttpUtil;
 import com.github.catvod.utils.Misc;
+import com.github.catvod.utils.Trans;
 import com.github.catvod.xpath.XPathRule;
 
 import org.json.JSONArray;
@@ -57,7 +58,7 @@ public class XPath extends Spider {
         List<Class> classes = new ArrayList<>();
         if (rule.getCateManual().size() > 0) {
             Set<String> keys = rule.getCateManual().keySet();
-            for (String k : keys) classes.add(new Class(k, rule.getCateManual().get(k)));
+            for (String k : keys) classes.add(new Class(rule.getCateManual().get(k), k));
         }
         String webUrl = rule.getHomeUrl();
         JXDocument doc = JXDocument.create(fetch(webUrl));
@@ -233,7 +234,7 @@ public class XPath extends Spider {
                 name = rule.getDetailUrlNameR(name);
                 String id = urlNodes.get(j).selOne(rule.getDetailUrlId()).asString().trim();
                 id = rule.getDetailUrlIdR(id);
-                vodItems.add(name + "$" + id);
+                vodItems.add(Trans.get(name) + "$" + id);
             }
             if (vodItems.size() == 0 && playFrom.size() > i) {
                 playFrom.set(i, "");
@@ -249,10 +250,8 @@ public class XPath extends Spider {
         for (int i = playList.size() - 1; i >= 0; i--) {
             if (i >= playFrom.size()) playList.remove(i);
         }
-        String vod_play_from = TextUtils.join("$$$", playFrom);
-        String vod_play_url = TextUtils.join("$$$", playList);
-        vod.setVodPlayFrom(vod_play_from);
-        vod.setVodPlayUrl(vod_play_url);
+        vod.setVodPlayFrom(TextUtils.join("$$$", playFrom));
+        vod.setVodPlayUrl(TextUtils.join("$$$", playList));
         return Result.string(vod);
     }
 
@@ -260,7 +259,10 @@ public class XPath extends Spider {
     public String playerContent(String flag, String id, List<String> vipFlags) {
         String webUrl = rule.getPlayUrl().isEmpty() ? id : rule.getPlayUrl().replace("{playUrl}", id);
         SpiderDebug.log(webUrl);
-        return Result.get().parse().url(webUrl).toString();
+        HashMap<String, String> headers = new HashMap<>();
+        if (rule.getPlayUa().length() > 0) headers.put("User-Agent", rule.getPlayUa());
+        if (rule.getPlayReferer().length() > 0) headers.put("Referer", rule.getPlayReferer());
+        return Result.get().parse().url(webUrl).header(headers).string();
     }
 
     @Override
