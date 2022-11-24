@@ -18,6 +18,8 @@ public class Item {
 
     @SerializedName("name")
     private String name;
+    @SerializedName("path")
+    private String path;
     @SerializedName("type")
     private int type;
     @SerializedName("size")
@@ -39,11 +41,27 @@ public class Item {
     }
 
     public String getName() {
-        return name;
+        return TextUtils.isEmpty(name) ? "" : name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getPath() {
+        return TextUtils.isEmpty(path) ? "" : path;
+    }
+
+    public void setPath(String path) {
+        this.path = path;
     }
 
     public int getType() {
         return type;
+    }
+
+    public void setType(int type) {
+        this.type = type;
     }
 
     public long getSize() {
@@ -85,7 +103,7 @@ public class Item {
     }
 
     public String getVodId(String id) {
-        return id + "/" + getName();
+        return id + getPath() + "/" + getName();
     }
 
     public String getPic() {

@@ -17,6 +17,9 @@ import com.google.gson.JsonSyntaxException;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,6 +35,7 @@ public class AList extends Spider {
 
     private LinkedHashMap<String, String> ext;
     private Map<String, String> map;
+    private String extend;
 
     private boolean isJson(String json) {
         try {
@@ -45,6 +49,7 @@ public class AList extends Spider {
     private void parseJson(String extend) throws Exception {
         JSONObject object = new JSONObject(extend);
         JSONArray array = object.names();
+        ext = new LinkedHashMap<>();
         for (int i = 0; i < array.length(); i++) {
             String key = array.getString(i);
             ext.put(key, object.getString(key));
@@ -53,15 +58,16 @@ public class AList extends Spider {
 
     private void parseText(String extend) {
         String[] array = extend.split("#");
+        ext = new LinkedHashMap<>();
         for (String text : array) {
             String[] arr = text.split("\\$");
             if (arr.length == 2) ext.put(arr[0], arr[1]);
         }
     }
 
-    private boolean v3(String name) {
-        if (!map.containsKey(name)) map.put(name, OkHttpUtil.string(ext.get(name) + "/api/public/settings").contains("v3.") ? "3" : "2");
-        return Objects.equals(map.get(name), "3");
+    private boolean v3(String key) {
+        if (!map.containsKey(key)) map.put(key, OkHttpUtil.string(ext.get(key) + "/api/public/settings").contains("v3.") ? "3" : "2");
+        return Objects.equals(map.get(key), "3");
     }
 
     private List<Filter> getFilter() {
@@ -71,29 +77,36 @@ public class AList extends Spider {
         return items;
     }
 
+    private void fetchRule() throws Exception {
+        if (ext != null && !ext.isEmpty()) return;
+        if (extend.startsWith("http")) extend = OkHttpUtil.string(extend);
+        if (isJson(extend)) parseJson(extend);
+        else parseText(extend);
+    }
+
     @Override
     public void init(Context context, String extend) {
         try {
-            map = new HashMap<>();
-            ext = new LinkedHashMap<>();
-            if (extend.startsWith("http")) extend = OkHttpUtil.string(extend);
-            if (isJson(extend)) parseJson(extend);
-            else parseText(extend);
+            this.map = new HashMap<>();
+            this.extend = extend;
+            fetchRule();
         } catch (Exception ignored) {
         }
     }
 
     @Override
-    public String homeContent(boolean filter) {
+    public String homeContent(boolean filter) throws Exception {
+        fetchRule();
         List<Class> classes = new ArrayList<>();
         LinkedHashMap<String, List<Filter>> filters = new LinkedHashMap<>();
-        for (String entry : ext.keySet()) classes.add(new Class(entry, entry, "1"));
+        for (String key : ext.keySet()) classes.add(new Class(key, key, "1"));
         for (Class item : classes) filters.put(item.getTypeId(), getFilter());
         return Result.string(classes, filters);
     }
 
     @Override
-    public String categoryContent(String tid, String pg, boolean filter, HashMap<String, String> extend) {
+    public String categoryContent(String tid, String pg, boolean filter, HashMap<String, String> extend) throws Exception {
+        fetchRule();
         String type = extend.containsKey("type") ? extend.get("type") : "name";
         String order = extend.containsKey("order") ? extend.get("order") : "asc";
         List<Item> folders = new ArrayList<>();
@@ -107,11 +120,12 @@ public class AList extends Spider {
         Sorter.sort(type, order, files);
         for (Item item : folders) list.add(item.getVod(tid));
         for (Item item : files) list.add(item.getVod(tid));
-        return Result.string(list);
+        return Result.get().vod(list).page().string();
     }
 
     @Override
-    public String detailContent(List<String> ids) {
+    public String detailContent(List<String> ids) throws Exception {
+        fetchRule();
         String id = ids.get(0);
         Item item = getDetail(id);
         String path = id.substring(0, id.lastIndexOf("/"));
@@ -127,9 +141,57 @@ public class AList extends Spider {
     }
 
     @Override
+    public String searchContent(String keyword, boolean quick) throws Exception {
+        fetchRule();
+        List<Vod> list = new ArrayList<>();
+        JSONObject params = new JSONObject();
+        params.put("path", "/");
+        params.put("keyword", keyword);
+        for (String key : ext.keySet()) {
+            if (v3(key)) list.addAll(getV3List(keyword, key));
+            else list.addAll(getV2List(params.toString(), key));
+        }
+        return Result.string(list);
+    }
+
+    @Override
     public String playerContent(String flag, String id, List<String> vipFlags) {
         String[] ids = id.split("\\+");
         return Result.get().url(ids[0]).sub(getSub(ids)).string();
+    }
+
+    private List<Vod> getV3List(String param, String key) {
+        String url = ext.get(key) + "/search?box=" + param + "&url=";
+        Document doc = Jsoup.parse(OkHttpUtil.string(url));
+        List<Vod> items = new ArrayList<>();
+        for (Element a : doc.select("ul > a")) {
+            String text = a.text();
+            String[] splits = text.split("\\.");
+            boolean file = splits.length > 1 && splits[1].length() == 3;
+            Item item = new Item();
+            int index = text.lastIndexOf("/");
+            if (index == -1) continue;
+            item.setPath("/" + text.substring(0, index));
+            item.setName(text.substring(index + 1));
+            item.setType(file ? 0 : 1);
+            items.add(item.getVod(key));
+        }
+        return items;
+    }
+
+    private List<Vod> getV2List(String param, String key) {
+        try {
+            if (v3(key)) return Collections.emptyList();
+            List<Vod> list = new ArrayList<>();
+            String url = ext.get(key) + "/api/public/search";
+            String response = OkHttpUtil.postJson(url, param);
+            String json = new JSONObject(response).getJSONArray("data").toString();
+            List<Item> items = Item.arrayFrom(json);
+            for (Item item : items) if (!item.ignore(false)) list.add(item.getVod(key));
+            return list;
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
     }
 
     private List<Item> getList(String id, boolean filter) {

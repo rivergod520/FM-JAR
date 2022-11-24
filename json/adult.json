@@ -1,5 +1,18 @@
 {
-  "spider": "https://ghproxy.com/https://raw.githubusercontent.com/FongMi/CatVodSpider/main/jar/custom_spider.jar;md5;1d0b9871d95075f2b2ccaf08b62ac64b",
+  "spider": "https://ghproxy.com/https://raw.githubusercontent.com/FongMi/CatVodSpider/main/jar/custom_spider.jar;md5;3161b616a35606b97460c59b19ed3b40",
+  "wallpaper": "https://gao.chuqiuyu.tk",
+  "lives": [
+    {
+      "name": "Adult",
+      "type": 0,
+      "url": "https://ghproxy.com/https://raw.githubusercontent.com/YanG-1989/m3u/main/Adult.m3u"
+    },
+    {
+      "name": "10086",
+      "type": 0,
+      "url": "https://agit.ai/VivoMax/Fu/raw/branch/master/Flzb/drzb.txt"
+    }
+  ],
   "sites": [
     {
       "key": "AList",
@@ -658,7 +671,7 @@
       "api": "csp_Push",
       "searchable": 1,
       "filterable": 1,
-      "ext": "339541c49aab4f6c878119930894f7ab"
+      "ext": "http://ali.xn--sss604efuw.ml/tok"
     }
   ]
 }

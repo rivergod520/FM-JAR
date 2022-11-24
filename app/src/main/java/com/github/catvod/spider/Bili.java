@@ -28,20 +28,38 @@ public class Bili extends Spider {
     private static final String url = "https://www.bilibili.com";
     private HashMap<String, String> header;
     private JSONObject ext;
+    private String extend;
 
-    private void initHeader() {
-        header = new HashMap<>();
-        header.put("cookie", "_uuid=5D5B10137-1328-6FA7-F1078-7299610109934F45334infoc; bg_view_12044=386583; buvid3=185689C8-03A5-751C-1AAF-03F69282AA9E47110infoc; b_nut=1667308447; buvid4=1AB69C99-50B4-D973-BF32-2CB8367580C147110-122110121-JleLtcqrjFz2MFF2u1deMQ%3D%3D; buvid_fp_plain=undefined; fingerprint3=dd53d137790289498f103b2fbf3fb252; fingerprint=7cc2faedec7082808a3099d0e3188c38; DedeUserID=429617357; DedeUserID__ckMd5=58f591cbe4b64558; SESSDATA=b70d8210%2C1682860530%2C600cd*b1; bili_jct=30fa4e1fd12981b4ae980d7ad5252894; i-wanna-go-back=-1; b_ut=5; buvid_fp=18ca78cc62eef7ce8dba4a806e9fdfa6; bg_view_41410=691613%7C478176; bg_view_43141=690880; sid=5tu2zjlx; b_lsid=10515334D_184366495CB; theme_style=light; nostalgia_conf=-1; innersign=1; rpdid=|(J|k~|)lk~k0J'uYY~JY|)|Y; CURRENT_FNVAL=16; CURRENT_QUALITY=120");
+    private String getCookie(String cookie) {
+        if (TextUtils.isEmpty(cookie)) return "buvid3=84B0395D-C9F2-C490-E92E-A09AB48FE26E71636infoc";
+        if (cookie.startsWith("http")) return OkHttpUtil.string(cookie).replace("\n", "");
+        return cookie;
+    }
+
+    private void setHeader() throws Exception {
+        header.put("cookie", getCookie(ext.getString("cookie")));
         header.put("User-Agent", Misc.CHROME);
         header.put("Referer", url);
+    }
+
+    private void fetchExt() {
+        String result = OkHttpUtil.string(extend);
+        if (!TextUtils.isEmpty(result)) extend = result;
+    }
+
+    private void fetchRule() throws Exception {
+        if (header.containsKey("cookie") && header.get("cookie").length() > 0) return;
+        if (extend.startsWith("http")) fetchExt();
+        ext = new JSONObject(extend);
+        setHeader();
     }
 
     @Override
     public void init(Context context, String extend) {
         try {
-            if (extend.startsWith("http")) extend = OkHttpUtil.string(extend);
-            ext = new JSONObject(extend);
-            initHeader();
+            this.extend = extend;
+            this.header = new HashMap<>();
+            fetchRule();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -49,11 +67,13 @@ public class Bili extends Spider {
 
     @Override
     public String homeContent(boolean filter) throws Exception {
+        fetchRule();
         return Result.string(Class.arrayFrom(ext.getJSONArray("classes").toString()), ext.getJSONObject("filter"));
     }
 
     @Override
     public String homeVideoContent() throws Exception {
+        fetchRule();
         return categoryContent("窗 白噪音", "1", true, new HashMap<>());
     }
 
